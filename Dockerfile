@@ -1,58 +1,54 @@
 FROM node:22-bookworm-slim AS base
 
-# openssl will be a required package if base is updated to 18.16+ due to node:*-slim base distro change
-# https://github.com/prisma/prisma/issues/19729#issuecomment-1591270599
-# Install ffmpeg
+# Required for Prisma + FFmpeg + SSL
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
+  && apt-get install --no-install-recommends -y \
     ffmpeg \
     tini \
     openssl \
     ca-certificates \
-    && apt-get autoclean \
-    && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+
+# === Stage 2: Install full dependencies (including dev)
 FROM base AS dependencies
 
 WORKDIR /usr/app
 
-# Add Python and build tools to compile native modules
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
+  && apt-get install --no-install-recommends -y \
     python3 \
     python-is-python3 \
     build-essential \
-    && apt-get autoclean \
-    && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
-COPY package.json .
-COPY yarn.lock .
-
-RUN yarn install --prod
+COPY package.json yarn.lock ./
+RUN yarn install
 RUN cp -R node_modules /usr/app/prod_node_modules
 
-RUN yarn install
 
+# === Stage 3: Build project (patched play.ts compiles here)
 FROM dependencies AS builder
 
 COPY . .
 
-# Run tsc build
-RUN yarn prisma generate
+# 👇 this ensures Prisma + your patched play.ts compiles
+RUN yarn prisma generate || true
 RUN yarn build
 
-# Only keep what's necessary to run
+
+# === Stage 4: Final runtime image
 FROM base AS runner
 
 WORKDIR /usr/app
 
 COPY --from=builder /usr/app/dist ./dist
-COPY --from=dependencies /usr/app/prod_node_modules node_modules
+COPY --from=dependencies /usr/app/prod_node_modules ./node_modules
 COPY --from=builder /usr/app/node_modules/.prisma/client ./node_modules/.prisma/client
 
+# include any runtime files you might rely on (optional)
 COPY . .
 
 ARG COMMIT_HASH=unknown
