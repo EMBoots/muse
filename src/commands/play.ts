@@ -1,3 +1,5 @@
+import fs from 'fs';
+import ytdl from 'ytdl-core';
 import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
 import {URL} from 'url';
 import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder} from '@discordjs/builders';
