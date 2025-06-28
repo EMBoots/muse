@@ -75,7 +75,9 @@ export default class implements Command {
       // queue and play logic would go here
     } catch (err) {
       console.error("💥 yt-dlp failed:", err);
-      await interaction.reply({ content: `🚫 ope: ${err.message || err}`, ephemeral: true });
+      const message = err instanceof Error ? err.message : String(err);
+      await interaction.reply({ content: `🚫 ope: ${message}`, ephemeral: true });
+
     }
   }
 
