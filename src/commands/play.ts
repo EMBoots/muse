@@ -68,7 +68,7 @@ export default class implements Command {
       noCheckCertificates: true,
       preferFreeFormats: true,
       addHeader: [`cookie: ${cookie}`],
-    });
+    }) as any as { title: string; url: string };
 
     console.log(`🎵 Title: ${info.title}`);
     console.log(`🔗 URL: ${info.url}`);
