@@ -1,5 +1,5 @@
 import fs from 'fs';
-import ytdl from 'ytdl-core';
+import youtubedl from 'youtube-dl-exec';
 import { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
 import { URL } from 'url';
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
@@ -63,16 +63,17 @@ export default class implements Command {
         .join('; ');
     }
 
-    const videoUrl = query; // or however you're resolving this
-    const stream = ytdl(videoUrl, {
-      requestOptions: {
-        headers: {
-          cookie,
-        },
-      },
+    const info = await youtubedl(query, {
+      dumpSingleJson: true,
+      noCheckCertificates: true,
+      preferFreeFormats: true,
+      addHeader: [`cookie: ${cookie}`],
     });
 
-    // your code to handle the stream here
+    console.log(`🎵 Title: ${info.title}`);
+    console.log(`🔗 URL: ${info.url}`);
+
+    // You'd pass info.url to your audio handling system
   }
 
   public async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
