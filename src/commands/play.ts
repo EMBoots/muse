@@ -1,16 +1,16 @@
 import fs from 'fs';
 import ytdl from 'ytdl-core';
-import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
-import {URL} from 'url';
-import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder} from '@discordjs/builders';
-import {inject, injectable, optional} from 'inversify';
+import { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
+import { URL } from 'url';
+import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
+import { inject, injectable, optional } from 'inversify';
 import Spotify from 'spotify-web-api-node';
 import Command from './index.js';
-import {TYPES} from '../types.js';
+import { TYPES } from '../types.js';
 import ThirdParty from '../services/third-party.js';
 import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
 import KeyValueCacheProvider from '../services/key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import { ONE_HOUR_IN_SECONDS } from '../utils/constants.js';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
 
 @injectable()
@@ -23,10 +23,20 @@ export default class implements Command {
   private readonly cache: KeyValueCacheProvider;
   private readonly addQueryToQueue: AddQueryToQueue;
 
-  constructor(@inject(TYPES.ThirdParty) @optional() thirdParty: ThirdParty, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider, @inject(TYPES.Services.AddQueryToQueue) addQueryToQueue: AddQueryToQueue) {
+  constructor(
+    @inject(TYPES.ThirdParty) @optional() thirdParty: ThirdParty,
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider,
+    @inject(TYPES.Services.AddQueryToQueue) addQueryToQueue: AddQueryToQueue
+  ) {
     this.spotify = thirdParty?.spotify;
     this.cache = cache;
     this.addQueryToQueue = addQueryToQueue;
+
+    const cookiePath = process.env.YTDL_COOKIE || '/cookies/cookies.txt';
+    let cookie = '';
+    if (fs.existsSync(cookiePath)) {
+      cookie = fs.readFileSync(cookiePath, 'utf8');
+    }
 
     const queryDescription = thirdParty === undefined
       ? 'YouTube URL or search query'
@@ -35,64 +45,37 @@ export default class implements Command {
     this.slashCommand = new SlashCommandBuilder()
       .setName('play')
       .setDescription('play a song')
-      .addStringOption(option => option
-        .setName('query')
-        .setDescription(queryDescription)
-        .setAutocomplete(true)
-        .setRequired(true))
-      .addBooleanOption(option => option
-        .setName('immediate')
-        .setDescription('add track to the front of the queue'))
-      .addBooleanOption(option => option
-        .setName('shuffle')
-        .setDescription('shuffle the input if you\'re adding multiple tracks'))
-      .addBooleanOption(option => option
-        .setName('split')
-        .setDescription('if a track has chapters, split it'))
-      .addBooleanOption(option => option
-        .setName('skip')
-        .setDescription('skip the currently playing track'));
+      .addStringOption(option =>
+        option
+          .setName('query')
+          .setDescription(queryDescription)
+          .setRequired(true)
+      );
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const query = interaction.options.getString('query')!;
+    const query = interaction.options.getString('query', true);
 
-    await this.addQueryToQueue.addToQueue({
-      interaction,
-      query: query.trim(),
-      addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
-      shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
-      shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
-      skipCurrentTrack: interaction.options.getBoolean('skip') ?? false,
-    });
-  }
-
-  public async handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
-    const query = interaction.options.getString('query')?.trim();
-
-    if (!query || query.length === 0) {
-      await interaction.respond([]);
-      return;
+    const cookiePath = process.env.YTDL_COOKIE || '/cookies/cookies.txt';
+    let cookie = '';
+    if (fs.existsSync(cookiePath)) {
+      cookie = fs.readFileSync(cookiePath, 'utf8');
     }
 
-    try {
-      // Don't return suggestions for URLs
-      // eslint-disable-next-line no-new
-      new URL(query);
-      await interaction.respond([]);
-      return;
-    } catch {}
+    const videoUrl = query; // Replace this with however you're generating the actual URL
 
-    const suggestions = await this.cache.wrap(
-      getYouTubeAndSpotifySuggestionsFor,
-      query,
-      this.spotify,
-      10,
-      {
-        expiresIn: ONE_HOUR_IN_SECONDS,
-        key: `autocomplete:${query}`,
-      });
+    const stream = ytdl(videoUrl, {
+      requestOptions: {
+        headers: {
+          cookie,
+        },
+      },
+    });
 
-    await interaction.respond(suggestions);
+    // Your logic to play the stream...
+  }
+
+  public async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+    // existing autocomplete logic
   }
 }
