@@ -61,7 +61,6 @@ export default class implements Command {
         noCheckCertificates: true,
         preferFreeFormats: true,
         cookies: cookiePath,
-        n: 1,
       }) as any;
 
       const url = info.url ?? (Array.isArray(info.entries) ? info.entries[0]?.url : null);
