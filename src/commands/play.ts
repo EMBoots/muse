@@ -51,29 +51,32 @@ export default class implements Command {
     const query = interaction.options.getString('query', true);
 
     const cookiePath = process.env.YTDL_COOKIE || '/usr/app/youtube.com_cookies.txt';
-    let cookie = '';
-    if (fs.existsSync(cookiePath)) {
-      cookie = fs.readFileSync(cookiePath, 'utf8')
-        .split('\n')
-        .filter(line => !line.startsWith('#') && line.trim() !== '')
-        .map(line => {
-          const parts = line.split('\t');
-          return `${parts[5]}=${parts[6]}`;
-        })
-        .join('; ');
+    const isURL = query.startsWith('http://') || query.startsWith('https://');
+    const target = isURL ? query : `ytsearch:${query}`;
+
+    try {
+      const info = await youtubedl(target, {
+        dumpSingleJson: true,
+        noCheckCertificates: true,
+        preferFreeFormats: true,
+        cookies: cookiePath,
+      }) as any;
+
+      const url = info.url || info.entries?.[0]?.url || null;
+
+      console.log(`🎵 Title: ${info.title}`);
+      console.log(`🔗 URL: ${url}`);
+
+      if (!url) {
+        await interaction.reply({ content: '🚫 ope: No playable URL found.', ephemeral: true });
+        return;
+      }
+
+      // queue and play logic would go here
+    } catch (err) {
+      console.error("💥 yt-dlp failed:", err);
+      await interaction.reply({ content: `🚫 ope: ${err.message || err}`, ephemeral: true });
     }
-
-    const info = await youtubedl(query, {
-      dumpSingleJson: true,
-      noCheckCertificates: true,
-      preferFreeFormats: true,
-      addHeader: [`cookie: ${cookie}`],
-    }) as any as { title: string; url: string };
-
-    console.log(`🎵 Title: ${info.title}`);
-    console.log(`🔗 URL: ${info.url}`);
-
-    // You'd pass info.url to your audio handling system
   }
 
   public async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
