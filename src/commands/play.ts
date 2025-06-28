@@ -63,7 +63,17 @@ export default class implements Command {
         cookies: cookiePath,
       }) as any;
 
-      const url = info.url ?? (Array.isArray(info.entries) ? info.entries[0]?.url : null);
+      let url: string | null = null;
+
+if (info.url) {
+  url = info.url;
+} else if (Array.isArray(info.entries) && info.entries[0]?.url) {
+  url = info.entries[0].url;
+} else if (Array.isArray(info.entries) && info.entries[0]?.formats?.[0]?.url) {
+  url = info.entries[0].formats[0].url;
+} else if (Array.isArray(info.formats) && info.formats[0]?.url) {
+  url = info.formats[0].url;
+}
 
       console.log(`🎵 Title: ${info.title}`);
       console.log(`🔗 URL: ${url}`);
