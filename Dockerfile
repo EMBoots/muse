@@ -43,6 +43,12 @@ RUN yarn build
 FROM base AS runner
 
 WORKDIR /usr/app
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    python3 \
+    python-is-python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/app/dist ./dist
 COPY --from=dependencies /usr/app/prod_node_modules ./node_modules
