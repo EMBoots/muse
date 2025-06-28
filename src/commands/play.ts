@@ -48,8 +48,9 @@ export default class implements Command {
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const query = interaction.options.getString('query', true);
+    await interaction.deferReply({ ephemeral: true });
 
+    const query = interaction.options.getString('query', true);
     const cookiePath = process.env.YTDL_COOKIE || '/usr/app/youtube.com_cookies.txt';
     const isURL = query.startsWith('http://') || query.startsWith('https://');
     const target = isURL ? query : `ytsearch:${query}`;
@@ -60,24 +61,32 @@ export default class implements Command {
         noCheckCertificates: true,
         preferFreeFormats: true,
         cookies: cookiePath,
+        n: 1,
       }) as any;
 
-      const url = info.url || info.entries?.[0]?.url || null;
+      const url = info.url ?? (Array.isArray(info.entries) ? info.entries[0]?.url : null);
 
       console.log(`🎵 Title: ${info.title}`);
       console.log(`🔗 URL: ${url}`);
 
       if (!url) {
-        await interaction.reply({ content: '🚫 ope: No playable URL found.', ephemeral: true });
+        await interaction.editReply({ content: '🚫 ope: No playable URL found.' });
         return;
       }
+
+      await interaction.editReply({ content: `🎵 Title: ${info.title}
+🔗 URL: ${url}` });
 
       // queue and play logic would go here
     } catch (err) {
       console.error("💥 yt-dlp failed:", err);
       const message = err instanceof Error ? err.message : String(err);
-      await interaction.reply({ content: `🚫 ope: ${message}`, ephemeral: true });
 
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: `🚫 ope: ${message}`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `🚫 ope: ${message}`, ephemeral: true });
+      }
     }
   }
 
