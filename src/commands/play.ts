@@ -63,17 +63,27 @@ export default class implements Command {
         cookies: cookiePath,
       }) as any;
 
-      let url: string | null = null;
+      
+let url: string | null = null;
+
+function extractAudioUrl(formats: any[]): string | null {
+  if (!Array.isArray(formats)) return null;
+  for (const fmt of formats) {
+    if (fmt?.acodec !== 'none' && fmt?.vcodec === 'none' && fmt?.url) {
+      return fmt.url;
+    }
+  }
+  return null;
+}
 
 if (info.url) {
   url = info.url;
-} else if (Array.isArray(info.entries) && info.entries[0]?.url) {
-  url = info.entries[0].url;
-} else if (Array.isArray(info.entries) && info.entries[0]?.formats?.[0]?.url) {
-  url = info.entries[0].formats[0].url;
-} else if (Array.isArray(info.formats) && info.formats[0]?.url) {
-  url = info.formats[0].url;
+} else if (Array.isArray(info.entries) && info.entries[0]) {
+  url = extractAudioUrl(info.entries[0].formats) || info.entries[0].url || null;
+} else {
+  url = extractAudioUrl(info.formats);
 }
+
 
       console.log(`🎵 Title: ${info.title}`);
       console.log(`🔗 URL: ${url}`);
