@@ -32,12 +32,6 @@ export default class implements Command {
     this.cache = cache;
     this.addQueryToQueue = addQueryToQueue;
 
-    const cookiePath = process.env.YTDL_COOKIE || '/cookies/cookies.txt';
-    let cookie = '';
-    if (fs.existsSync(cookiePath)) {
-      cookie = fs.readFileSync(cookiePath, 'utf8');
-    }
-
     const queryDescription = thirdParty === undefined
       ? 'YouTube URL or search query'
       : 'YouTube URL, Spotify URL, or search query';
@@ -56,14 +50,20 @@ export default class implements Command {
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const query = interaction.options.getString('query', true);
 
-    const cookiePath = process.env.YTDL_COOKIE || '/cookies/cookies.txt';
+    const cookiePath = process.env.YTDL_COOKIE || '/usr/app/youtube.com_cookies.txt';
     let cookie = '';
     if (fs.existsSync(cookiePath)) {
-      cookie = fs.readFileSync(cookiePath, 'utf8');
+      cookie = fs.readFileSync(cookiePath, 'utf8')
+        .split('\n')
+        .filter(line => !line.startsWith('#') && line.trim() !== '')
+        .map(line => {
+          const parts = line.split('\t');
+          return `${parts[5]}=${parts[6]}`;
+        })
+        .join('; ');
     }
 
-    const videoUrl = query; // Replace this with however you're generating the actual URL
-
+    const videoUrl = query; // or however you're resolving this
     const stream = ytdl(videoUrl, {
       requestOptions: {
         headers: {
@@ -72,10 +72,10 @@ export default class implements Command {
       },
     });
 
-    // Your logic to play the stream...
+    // your code to handle the stream here
   }
 
   public async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
-    // existing autocomplete logic
+    // your autocomplete logic here
   }
 }
